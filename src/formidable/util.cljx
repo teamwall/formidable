@@ -218,7 +218,7 @@
   #+cljs (.getUTCMinutes date))
 
 (defn sec [date]
-  #+clj (ct/sec date)
+  #+clj (ct/second date)
   #+cljs (.getUTCSeconds date))
 
 (defn get-hours-minutes-seconds [date]
