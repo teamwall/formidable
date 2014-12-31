@@ -6,7 +6,7 @@ Web forms for __Clojure__ and __ClojureScript__:
 * Parse form data from Ring-style param maps or strings
 * Validate parsed data using [Verily](https://github.com/jkk/verily)
 
-See a __live demo__ at [formidable-demo.herokuapp.com](http://formidable-demo.herokuapp.com/) ([demo source](https://github.com/jkk/formidable-demo))
+See a __live demo__ at [formidable-demo.herokuapp.com](http://formidable-demo.herokuapp.com/) ([demo source](https://github.com/teamwall/formidable-demo))
 
 ## Installation
 
@@ -450,7 +450,7 @@ Field types are extensible with the `formidable.render/render-field` and `formid
 
 ## Demo
 
-See a live demo at [formidable-demo.herokuapp.com](http://formidable-demo.herokuapp.com) or [view the demo source](https://github.com/jkk/formidable-demo).
+See a live demo at [formidable-demo.herokuapp.com](http://formidable-demo.herokuapp.com) or [view the demo source](https://github.com/teamwall/formidable-demo).
 
 ## Developing
 
