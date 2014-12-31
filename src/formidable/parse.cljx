@@ -72,7 +72,7 @@
   (when-not (string/blank? x)
     #+clj (try
       (BigDecimal. x)
-      (catch Exception
+      (catch Exception e
         (->ParseError x)))
     #+cljs x))
 
@@ -86,7 +86,7 @@
   (when-not (string/blank? x)
     #+clj (try
       (bigint (BigInteger. x))
-      (catch #+clj Exception
+      (catch Exception e
         (->ParseError x)))
     #+cljs x))
 
