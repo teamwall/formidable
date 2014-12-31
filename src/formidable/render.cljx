@@ -67,10 +67,12 @@
 
 (defmulti render-field
   "Render a field as Hiccup data. Dispatches on :type"
-  (fn [field]
-    (:type field)))
+  (fn [field & [renderer]]
+    (if (nil? renderer)
+      (:type field)
+      [(:type field) renderer])))
 
-(defn- get-input-attrs [field allowed-keys]
+(defn get-input-attrs [field allowed-keys]
   (let [data-keys (filter #(re-find #"^data-" (name %))
                           (keys field))]
     (select-keys field (concat allowed-keys data-keys))))
@@ -136,7 +138,7 @@
                                       :onfocus :onblur :placeholder])]
     [:textarea attrs (fu/escape-html (render-input-val field))]))
 
-(defn ^:private build-opt-tag [v text val]
+(defn build-opt-tag [v text val]
   (let [v (str v)]
     [:option {:value v :selected (= val v)} text]))
 
@@ -349,7 +351,7 @@
                           :type :select
                           :options opts))]))
 
-(defn- round [x step]
+(defn round [x step]
   (int (* (Math/floor (/ x (double step)) ) step)))
 
 (defmethod render-field :time [field]
@@ -359,7 +361,7 @@
              (when time
                (fu/format-time time))))))
 
-(defn- get-hour+ampm [h ampm?]
+(defn get-hour+ampm [h ampm?]
   (when h
     (if ampm?
       (cond
@@ -369,7 +371,7 @@
         :else [h "am"])
       [h])))
 
-(defn- format-minutes [m]
+(defn format-minutes [m]
   (#+clj format #+cljs gstring/format "%02d" m))
 
 (defn- render-time-select-multi [fname h m s step ampm? seconds?]
@@ -415,14 +417,14 @@
       [(inc h) (- m* 60)] ;assumes never adding more than 60
       [h m*])))
 
-(defn- time-range [start [eh em] step]
+(defn time-range [start [eh em] step]
   (take-while (fn [[h m]]
                 (or (< h eh)
                     (and (= h eh) (<= m em))))
     (iterate (fn [[h m]] (add-minutes h m step))
              start)))
 
-(defn- format-time [h m ampm?]
+(defn format-time [h m ampm?]
   (let [[h ampm] (get-hour+ampm h ampm?)]
     (str h ":"
          (format-minutes m)
