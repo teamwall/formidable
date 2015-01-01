@@ -47,15 +47,29 @@
     container-or-form-el
     (sel1 container-or-form-el "form")))
 
+(defn- build-class-for-errors
+  [renderer]
+  (str "."
+       (string/join "."
+                    (string/split (fr/fields-error-class renderer)
+                                  #"\s"))))
+
 (defn clear-problems
   "Clears form problems from the DOM"
-  [container-or-form-el]
-  (let [form-el (get-form-el container-or-form-el)]
+  [container-or-form-el & [renderer]]
+  (let [form-el (get-form-el container-or-form-el)
+        error-class (if renderer
+                      (build-class-for-errors renderer)
+                      ".problem.error")
+        classes-to-remove (if renderer
+                            (clojure.string/split (fr/fields-error-class renderer)
+                                                  #"\s")
+                            ["problem" "error"])]
     (when-let [parent-el (.-parentNode form-el)]
       (when-let [problems-el (sel1 parent-el ".form-problems")]
         (d/remove! problems-el)))
-    (doseq [el (sel form-el ".problem.error")]
-      (d/remove-class! el "problem" "error"))))
+    (doseq [el (sel form-el error-class)]
+      (apply d/remove-class! el classes-to-remove))))
 
 (defn get-scroll-top
   "Returns the top window scroll position"
@@ -82,7 +96,7 @@
   [form-spec container-or-form-el problems]
   (let [form-el (get-form-el container-or-form-el)
         renderer (:renderer form-spec)]
-    (clear-problems form-el)
+    (clear-problems form-el renderer)
     (let [problems-el (crate/html (fr/render-problems problems
                                                       (:fields form-spec)
                                                       renderer))]
@@ -115,6 +129,6 @@
                (fn [event]
                  (.preventDefault event)
                  (with-fallback failure
-                   (clear-problems form-el)
+                   (clear-problems form-el (:renderer form-spec))
                    (success
                     (fp/parse-params form-spec (serialize form-el))))))))

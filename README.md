@@ -13,7 +13,7 @@ See a __live demo__ at [formidable-demo.herokuapp.com](http://formidable-demo.he
 Leiningen coordinate:
 
 ```clj
-[formidable "0.1.6"]
+[formidable "0.1.7"]
 ```
 
 ## Usage
@@ -471,4 +471,4 @@ please see the `LICENSE` file.
 
 
 Formidable is based on [formative](https://github.com/jkk/formative) by [Justin Kramer](http://jkkramer.com/).
-See 
+See `LICENSE-formative` for more information.
