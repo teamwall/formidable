@@ -1,4 +1,4 @@
-(defproject formidable "0.1.5"
+(defproject formidable "0.1.6"
   :description "Web forms - rendering, parsing, and validating"
   :url "https://github.com/teamwall/formidable"
   :license {:name "Eclipse Public License"

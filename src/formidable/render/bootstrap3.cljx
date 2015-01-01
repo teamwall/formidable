@@ -9,22 +9,26 @@
             [clojure.string :as string]))
 
 (defmethod render-compound :bootstrap3-stacked [field _]
- (let [subfields (for [subfield (:fields field)]
+  (let [subfields (for [subfield (:fields field)]
                     (let [sfname (str (:name field) "[" (:name subfield) "]")]
                       (assoc subfield
-                             :name sfname
-                             :id (fu/get-field-id {:name sfname}))))
+                        :name sfname
+                        :id (fu/get-field-id {:name sfname}))))
         combiner (or (:combiner field)
                      (fn [subfields]
                        [:span.compound
                         (interpose (:separator field " ") subfields)]))]
     (combiner (map (fn [subfield]
-                       (let [sfname (str (:name field) "[" (:name subfield) "]")
-                             id     (fu/get-field-id {:name sfname})]
-                         (vector :div.form-group
-                                 [:label.sr-only {:for id} (:label subfield)]
-                                 (render-field subfield :bootstrap3-stacked))))
-                    subfields))))
+                     (let [sfname      (str (:name field)
+                                            "[" (:name subfield) "]")
+                           id          (fu/get-field-id {:name sfname})
+                           field-class (or (:class subfield) "")
+                           field-class (str field-class " form-control")
+                           new-field   (assoc subfield :class field-class)]
+                       (vector :div.form-group
+                               [:label.sr-only {:for id} (:label new-field)]
+                               (render-field new-field :bootstrap3-stacked))))
+                   subfields))))
 
 (defmethod render-select :bootstrap3-stacked [field _]
   (let [attrs (get-input-attrs field [:name :id :class :autofocus

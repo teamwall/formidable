@@ -13,7 +13,7 @@ See a __live demo__ at [formidable-demo.herokuapp.com](http://formidable-demo.he
 Leiningen coordinate:
 
 ```clj
-[formidable "0.1.5"]
+[formidable "0.1.6"]
 ```
 
 ## Usage
