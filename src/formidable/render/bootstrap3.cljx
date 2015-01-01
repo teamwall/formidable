@@ -1,7 +1,7 @@
 (ns formidable.render.bootstrap3
   (:require [formidable.data :as data]
             [formidable.render :refer [render-form render-field
-                                       render-problems
+                                       render-problems fields-error-class
                                        get-hour+ampm format-minutes
                                        format-time time-range round
                                        build-opt-tag get-input-attrs
@@ -233,37 +233,39 @@
         field (if (= :submit (:type field))
                 (assoc field :class (str (:class field)
                                          " btn btn-primary"))
-                field)]
+                field)
+        content (if (= :heading (:type field))
+                  (when (:text field) [:legend (render-field field :bootstrap3-stacked)])
+                  (list
+                    (when (and (not checkbox?) (:label field))
+                      (if inline?
+                        [:label.control-label.show {:for field-id} (:label field)]
+                        [:label.control-label {:for field-id} (:label field)]))
+                    (when (:prefix field)
+                       [:span.prefix (:prefix field)])
+                    (if checkbox?
+                      [:label {:for field-id} " "
+                        (render-field field :bootstrap3-stacked) " "
+                        [:span.cb-label (:label field)]]
+                      (render-field field :bootstrap3-stacked))
+                    (when (:suffix field)
+                       [:span.suffix (:suffix field)])
+                    (when (and (= :submit (:type field))
+                                (:cancel-href field))
+                       [:span.cancel-link " " [:a.btn {:href (:cancel-href field)}
+                                               (:cancel-label field)]])
+                    (when (:note field)
+                       [:div.note.help-inline (:note field)])))]
 
     [:div {:id (fu/get-field-container-id field)
            :class (str (cond
                          checkbox? "checkbox "
-                         inline? "form-inline "
                          :else     "form-group ")
                        (:div-class field)
                        (when (:problem field) " has-error problem " ))}
-     (if (= :heading (:type field))
-       (when (:text field) [:legend (render-field field :bootstrap3-stacked)])
-       (list
-         (when (and (not checkbox?) (:label field))
-           (if inline?
-             [:label.control-label.show {:for field-id} (:label field)]
-             [:label.control-label {:for field-id} (:label field)]))
-         (when (:prefix field)
-            [:span.prefix (:prefix field)])
-         (if checkbox?
-           [:label {:for field-id} " "
-             (render-field field :bootstrap3-stacked) " "
-             [:span.cb-label (:label field)]]
-           (render-field field :bootstrap3-stacked))
-         (when (:suffix field)
-            [:span.suffix (:suffix field)])
-         (when (and (= :submit (:type field))
-                     (:cancel-href field))
-            [:span.cancel-link " " [:a.btn {:href (:cancel-href field)}
-                                    (:cancel-label field)]])
-         (when (:note field)
-            [:div.note.help-inline (:note field)])))]))
+      (if inline?
+        [:div.form-inline content]
+        content)]))
 
 (defn- group-fieldsets [fields]
   (loop [ret []
@@ -314,13 +316,16 @@
     [:form (dissoc form-attrs :renderer)
       (when-let [problems (:problems opts)]
        (when (map? (first problems))
-         (render-problems problems fields)))
+         (render-problems problems fields :bootstrap3-stacked)))
       (list
        (map (fn [field] (render-field field :bootstrap3-stacked))
             hidden-fields)
        (for [fieldset (group-fieldsets visible-fields)]
          [:fieldset {:class (str "fieldset-" (name (:name (first fieldset))))}
           (map render-bootstrap-row fieldset)]))]))
+
+(defmethod fields-error-class :bootstrap3-stacked [_]
+  "problem has-error")
 
 (defmethod render-form :bootstrap3-stacked [form-attrs fields opts]
   (render-bootstrap-form form-attrs fields "form-shell" opts))

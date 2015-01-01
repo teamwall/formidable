@@ -480,3 +480,10 @@
 (defmethod render-field :us-tel [field]
   (render-default-input
     (assoc field :type :tel :value (fu/format-us-tel (:value field)))))
+
+(defmulti fields-error-class
+  (fn [renderer]
+    renderer))
+
+(defmethod fields-error-class :default [_]
+  "problem error")

@@ -80,11 +80,12 @@
 (defn show-problems
   "Shows form problems in the DOM"
   [form-spec container-or-form-el problems]
-  (let [form-el (get-form-el container-or-form-el)]
+  (let [form-el (get-form-el container-or-form-el)
+        renderer (:renderer form-spec)]
     (clear-problems form-el)
     (let [problems-el (crate/html (fr/render-problems problems
                                                       (:fields form-spec)
-                                                      (:renderer form-spec)))]
+                                                      renderer))]
       (d/insert-before! problems-el form-el)
       (scroll-to-el problems-el))
     (doseq [problem problems
@@ -96,7 +97,8 @@
                                  {:id (fu/get-field-id {:name fname})
                                   :name fname})]
         (when-let [el (sel1 (str "#" field-container-id))]
-          (d/add-class! el "problem error"))))))
+          (d/add-class! el
+                        (fr/fields-error-class renderer)))))))
 
 (defn handle-submit
   "Attaches an event handler to a form's \"submit\" browser event, validates
