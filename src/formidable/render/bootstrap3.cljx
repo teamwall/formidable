@@ -65,44 +65,47 @@
                     (= :date-select (:type field))
                     (= :time-select (:type field)))
         field (assoc field
-                     :id field-id
-                     :class (if checkbox? "" "form-control"))
-        field (if (= :submit (:type field))
+                :id field-id
+                :class (if checkbox? "" "form-control"))
+        submit? (= :submit (:type field))
+        field (if submit?
                 (assoc field :class (str (:class field)
                                          " btn btn-primary"))
                 field)
         content (if (= :heading (:type field))
                   (when (:text field) [:legend (render-field field :bootstrap3-stacked)])
                   (list
-                    (when (and (not checkbox?) (:label field))
-                      (if inline?
-                        [:label.control-label.show {:for field-id} (:label field)]
-                        [:label.control-label {:for field-id} (:label field)]))
-                    (when (:prefix field)
-                       [:span.prefix (:prefix field)])
-                    (if checkbox?
-                      [:label {:for field-id} " "
-                        (render-field field :bootstrap3-stacked) " "
-                        [:span.cb-label (:label field)]]
-                      (render-field field :bootstrap3-stacked))
-                    (when (:suffix field)
-                       [:span.suffix (:suffix field)])
-                    (when (and (= :submit (:type field))
-                                (:cancel-href field))
-                       [:span.cancel-link " " [:a.btn {:href (:cancel-href field)}
-                                               (:cancel-label field)]])
-                    (when (:note field)
-                       [:div.note.help-inline (:note field)])))]
+                   (when (and (not checkbox?) (:label field))
+                     (if inline?
+                       [:label.control-label.show {:for field-id} (:label field)]
+                       [:label.control-label {:for field-id} (:label field)]))
+                   (when (:prefix field)
+                     [:span.prefix (:prefix field)])
+                   (when (and (= :submit (:type field))
+                              (:cancel-href field))
+                     [:span.cancel-link.visible-xs-inline-block.visible-sm-inline-block.visible-md-inline-block.visible-lg-inline-block
+                      " " [:a.btn {:href (:cancel-href field)}
+                           (:cancel-label field)]])
+                   (cond
+                    checkbox? [:label {:for field-id} " "
+                               (render-field field :bootstrap3-stacked) " "
+                               [:span.cb-label (:label field)]]
+                    submit? [:span.visible-xs-inline-block.visible-sm-inline-block.visible-md-inline-block.visible-lg-inline-block (render-field field :bootstrap3-stacked)]
+                    :else (render-field field :bootstrap3-stacked))
+                   (when (:suffix field)
+                     [:span.suffix (:suffix field)])
+                   (when (:note field)
+                     [:div.note.help-inline (:note field)])))]
 
     [:div {:id (fu/get-field-container-id field)
            :class (str (cond
-                         checkbox? "checkbox "
-                         :else     "form-group ")
+                        checkbox? "checkbox "
+                        :else     "form-group ")
                        (:div-class field)
                        (when (:problem field) " has-error problem " ))}
-      (if inline?
-        [:div.form-inline content]
-        content)]))
+     (if inline?
+       [:div.form-inline content]
+       content)]))
 
 (defn- group-fieldsets [fields]
   (loop [ret []
