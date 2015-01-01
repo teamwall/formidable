@@ -73,11 +73,9 @@
   (default-render-problems problems fields))
 
 (defmulti render-field
-  "Render a field as Hiccup data. Dispatches on :type and :renderer"
+  "Render a field as Hiccup data. Dispatches on :type"
   (fn [field & [renderer]]
-    (if (nil? renderer)
-      (:type field)
-      [(:type field) renderer])))
+      (:type field)))
 
 (defn get-input-attrs [field allowed-keys]
   (let [data-keys (filter #(re-find #"^data-" (name %))
@@ -135,21 +133,238 @@
         [:span.input-prefix prefix])
       [:input attrs])))
 
-(defmethod render-field :default [field]
-  (render-default-input field))
+(defn build-opt-tag [v text val]
+  (let [v (str v)]
+    [:option {:value v :selected (= val v)} text]))
 
-(defmethod render-field :textarea [field]
+(defn- opt-slug [val]
+  (-> (str val)
+    (string/replace #"[^a-zA-Z0-9\-]" "-")
+    (string/replace #"-{2,}" "-")))
+
+(defn- render-radios-field [field]
+  (let [val (str (:value field))
+        opts (fu/normalize-options (:options field))
+        build-radio (fn [oval olabel]
+                      (let [id (str (:id field) "__" (opt-slug oval))]
+                        [:div.radio-shell
+                         [:label.radio {:for id}
+                          [:span.radio-input-shell
+                           (render-default-input {:name (:name field) :id id
+                                                  :type :radio
+                                                  :checked (= val (str oval))
+                                                  :value oval})]
+                          " "
+                          [:span.radio-label [:nobr olabel]]]]))]
+    [:div.radios
+     (for [[oval olabel subopts] opts]
+       (if (empty? subopts)
+         (build-radio oval olabel)
+         [:div.radio-group
+          [:h5.radio-group-heading olabel]
+          (for [[oval olabel] (fu/normalize-options subopts)]
+            (build-radio oval olabel))]))]))
+
+(defn get-hour+ampm [h ampm?]
+  (when h
+    (if ampm?
+      (cond
+        (zero? h) [12 "am"]
+        (= 12 h) [12 "pm"]
+        (< 12 h) [(- h 12) "pm"]
+        :else [h "am"])
+      [h])))
+
+(defn format-minutes [m]
+  (#+clj format #+cljs gstring/format "%02d" m))
+
+(defn- render-time-select-multi [fname h m s step ampm? seconds? renderer]
+  (let [[h ampm] (get-hour+ampm h ampm?)]
+    (list
+      (render-field {:type :select
+                     :name (str fname "[h]")
+                     :class "input-small"
+                     :value h
+                     :first-option ["" "--"]
+                     :options (if ampm? (range 1 13) (range 0 24))}
+                    renderer)
+      " "
+      (render-field {:type :select
+                     :name (str fname "[m]")
+                     :class "input-small"
+                     :value m
+                     :first-option ["" "--"]
+                     :options (map (juxt identity format-minutes)
+                                   (range 0 60 step))}
+                    renderer)
+      (when seconds?
+        (list
+          " "
+          (render-field {:type :select
+                         :name (str fname "[s]")
+                         :class "input-small"
+                         :value s
+                         :first-option ["" "--"]
+                         :options (map (juxt identity format-minutes)
+                                       (range 0 60 step))}
+                        renderer)))
+      (when ampm?
+        (list
+          " "
+          (render-field {:type :select
+                         :name (str fname "[ampm]")
+                         :class "input-small"
+                         :value ampm
+                         :first-option ["" "--"]
+                         :options ["am" "pm"]}
+                        renderer))))))
+
+(defn- add-minutes [h m mx]
+  (let [m* (+ m mx)]
+    (if (< 59 m*)
+      [(inc h) (- m* 60)] ;assumes never adding more than 60
+      [h m*])))
+
+(defn time-range [start [eh em] step]
+  (take-while (fn [[h m]]
+                (or (< h eh)
+                    (and (= h eh) (<= m em))))
+    (iterate (fn [[h m]] (add-minutes h m step))
+             start)))
+
+(defn format-time [h m ampm?]
+  (let [[h ampm] (get-hour+ampm h ampm?)]
+    (str h ":"
+         (format-minutes m)
+         (when ampm? (str " " ampm)))))
+
+(defn- render-time-select-single [field h m step ampm? start end renderer]
+  (let [start (or (fu/normalize-time start)
+                  (fu/normalize-time {:h 0 :m 0}))
+        end (or (fu/normalize-time end)
+                (fu/normalize-time {:h 23 :m 59}))
+        opts (for [[h m] (time-range (fu/get-hours-minutes-seconds start)
+                                     (fu/get-hours-minutes-seconds end)
+                                     step)]
+               [(str h ":" (format-minutes m))
+                (format-time h m ampm?)])]
+    (render-field (assoc field
+                         :type :select
+                         :value (str h ":" (format-minutes m))
+                         :options opts)
+                  renderer)))
+
+(defn round [x step]
+  (int (* (Math/floor (/ x (double step)) ) step)))
+
+(defmulti fields-error-class
+  (fn [renderer]
+    renderer))
+
+(defmethod fields-error-class :default [_]
+  "problem error")
+
+
+;/=====================================\
+;|                                     |
+;|   defmulti for each kind of field   |
+;|     (dispatch on the renderer)      |
+;|                                     |
+;\=====================================/
+
+
+(defmulti render-default-field
+  (fn [field renderer & [opts]] renderer))
+
+(defmulti render-textarea
+  (fn [field renderer] renderer))
+
+(defmulti render-select
+  (fn [field renderer] renderer))
+
+(defmulti render-checkbox
+  (fn [field renderer] renderer))
+
+(defmulti render-checkboxes
+  (fn [field renderer] renderer))
+
+(defmulti render-radio
+  (fn [field renderer] renderer))
+
+(defmulti render-radios
+  (fn [field renderer] renderer))
+
+(defmulti render-html
+  (fn [field renderer] renderer))
+
+(defmulti render-labeled-html
+  (fn [field renderer] renderer))
+
+(defmulti render-heading
+  (fn [field renderer] renderer))
+
+(defmulti render-us-state
+  (fn [field renderer] renderer))
+
+(defmulti render-ca-state
+  (fn [field renderer] renderer))
+
+(defmulti render-country
+  (fn [field renderer] renderer))
+
+(defmulti render-date
+  (fn [field renderer] renderer))
+
+(defmulti render-date-text
+  (fn [field renderer] renderer))
+
+(defmulti render-compound
+  (fn [field renderer] renderer))
+
+(defmulti render-date-select
+  (fn [field renderer] renderer))
+
+(defmulti render-year-select
+  (fn [field renderer] renderer))
+
+(defmulti render-month-select
+  (fn [field renderer] renderer))
+
+(defmulti render-time
+  (fn [field renderer] renderer))
+
+(defmulti render-time-select
+  (fn [field renderer] renderer))
+
+(defmulti render-datetime-select
+  (fn [field renderer] renderer))
+
+(defmulti render-currency
+  (fn [field renderer] renderer))
+
+(defmulti render-us-tel
+  (fn [field renderer] renderer))
+
+
+;/=====================================\
+;|                                     |
+;|   default for each kind of field    |
+;|         (defaut renderer)           |
+;|                                     |
+;\=====================================/
+
+
+(defmethod render-default-field :default [field _ & [opts]]
+  (render-default-input field opts))
+
+(defmethod render-textarea :default [field _]
   (let [attrs (get-input-attrs field [:name :id :class :autofocus
                                       :disabled :style :size :rows :cols :wrap
                                       :readonly :tabindex :onchange :onclick
                                       :onfocus :onblur :placeholder])]
     [:textarea attrs (fu/escape-html (render-input-val field))]))
 
-(defn build-opt-tag [v text val]
-  (let [v (str v)]
-    [:option {:value v :selected (= val v)} text]))
-
-(defmethod render-field :select [field]
+(defmethod render-select :default [field _]
   (let [attrs (get-input-attrs field [:name :id :class :autofocus
                                       :disabled :multiple :size :readonly
                                       :tabindex :onchange :onclick :onfocus
@@ -176,20 +391,17 @@
                    opt-tags)]
     [:select attrs opt-tags]))
 
-(defmethod render-field :checkbox [field]
+(defmethod render-checkbox :default [field renderer]
   (list
    (when (contains? field :unchecked-value)
-     (render-default-input {:name (:name field)
+     (render-default-field {:name (:name field)
                             :type :hidden
-                            :value (:unchecked-value field)}))
-   (render-default-input field)))
+                            :value (:unchecked-value field)}
+                           renderer))
+   (render-default-field field
+                         renderer)))
 
-(defn- opt-slug [val]
-  (-> (str val)
-    (string/replace #"[^a-zA-Z0-9\-]" "-")
-    (string/replace #"-{2,}" "-")))
-
-(defmethod render-field :checkboxes [field]
+(defmethod render-checkboxes :default [field _]
   (let [vals (set (map str (:value field)))
         opts (fu/normalize-options (:options field))
         fname (str (name (:name field)) "[]")
@@ -216,94 +428,81 @@
                               (partition-all cb-per-col opts))]
        [:div {:class (str "cb-col cb-col-" col)}
         (for [[oval olabel subopts] colopts]
-           (if (empty? subopts)
-             (build-cb oval olabel)
-             [:div.cb-group
-              [:h5.cb-group-heading olabel]
-              (for [[oval olabel] (fu/normalize-options subopts)]
-                (build-cb oval olabel))]))])]))
+          (if (empty? subopts)
+            (build-cb oval olabel)
+            [:div.cb-group
+             [:h5.cb-group-heading olabel]
+             (for [[oval olabel] (fu/normalize-options subopts)]
+               (build-cb oval olabel))]))])]))
 
-(defn- render-radios [field]
-  (let [val (str (:value field))
-        opts (fu/normalize-options (:options field))
-        build-radio (fn [oval olabel]
-                      (let [id (str (:id field) "__" (opt-slug oval))]
-                        [:div.radio-shell
-                         [:label.radio {:for id}
-                          [:span.radio-input-shell
-                           (render-default-input {:name (:name field) :id id
-                                                  :type :radio
-                                                  :checked (= val (str oval))
-                                                  :value oval})]
-                          " "
-                          [:span.radio-label [:nobr olabel]]]]))]
-    [:div.radios
-     (for [[oval olabel subopts] opts]
-       (if (empty? subopts)
-         (build-radio oval olabel)
-         [:div.radio-group
-          [:h5.radio-group-heading olabel]
-          (for [[oval olabel] (fu/normalize-options subopts)]
-            (build-radio oval olabel))]))]))
+(defmethod render-radio :default [field _]
+  (render-radios-field field))
 
-(defmethod render-field :radio [field]
-  (render-radios field))
+(defmethod render-radios :default [field _]
+  (render-radios-field field))
 
-(defmethod render-field :radios [field]
-  (render-radios field))
-
-(defmethod render-field :html [field]
+(defmethod render-html :default [field _]
   (:html field))
 
-(defmethod render-field :labeled-html [field]
+(defmethod render-labeled-html :default [field _]
   (:html field))
 
-(defmethod render-field :heading [field]
+(defmethod render-heading :default [field _]
   [:h3 (:text field)])
 
-(defmethod render-field :us-state [field]
+(defmethod render-us-state :default [field renderer]
   (render-field (assoc field
-                       :type :select
-                       :options data/us-states)))
+                  :type :select
+                  :options data/us-states)
+                renderer))
 
-(defmethod render-field :ca-state [field]
+(defmethod render-ca-state :default [field renderer]
   (render-field (assoc field
-                       :type :select
-                       :options data/ca-states)))
+                  :type :select
+                  :options data/ca-states)
+                renderer))
 
-(defmethod render-field :country [field]
+(defmethod render-country :default [field renderer]
   (render-field (assoc field
-                       :type :select
-                       :options (data/countries-by (or (:country-code field) :alpha2)))))
+                  :type :select
+                  :options (data/countries-by (or (:country-code field)
+                                                  :alpha2)))
+                renderer))
 
-(defmethod render-field :date [field]
+(defmethod render-date :default [field renderer]
   (let [date (fu/normalize-date (:value field) (:date-format field))]
-    (render-default-input
-      (assoc field :value
-             (when date
-               (fu/format-date date (:date-format field "yyyy-MM-dd")))))))
+    ( (assoc field
+                            :value (when date
+                                     (fu/format-date date
+                                                     (:date-format field
+                                                                   "yyyy-MM-dd"))))
+                         renderer)))
 
-(defmethod render-field :date-text [field]
+(defmethod render-date-text :default [field renderer]
   (let [date (fu/normalize-date (:value field) (:date-format field))]
-    (render-default-input
-      (assoc field
-             :type :text
-             :value (when date
-                      (fu/format-date date (:date-format field "yyyy-MM-dd")))))))
+    (render-default-field (assoc field
+                            :type :text
+                            :value (when date
+                                     (fu/format-date date
+                                                     (:date-format field
+                                                                   "yyyy-MM-dd"))))
+                         renderer)))
 
-(defmethod render-field :compound [field]
+(defmethod render-compound :default [field renderer]
   (let [subfields (for [subfield (:fields field)]
                     (let [sfname (str (:name field) "[" (:name subfield) "]")]
                       (assoc subfield
-                             :name sfname
-                             :id (fu/get-field-id {:name sfname}))))
+                        :name sfname
+                        :id (fu/get-field-id {:name sfname}))))
         combiner (or (:combiner field)
                      (fn [subfields]
                        [:span.compound
                         (interpose (:separator field " ") subfields)]))]
-    (combiner (map render-field subfields))))
+    (combiner (map (fn [field]
+                     (render-field field renderer))
+                   subfields))))
 
-(defmethod render-field :date-select [field]
+(defmethod render-date-select :default [field renderer]
   (let [date (fu/normalize-date (:value field) nil (:timezone field))
         [year month day] (when date
                            (fu/get-year-month-day date))
@@ -334,9 +533,10 @@
                               :value year
                               :options (cons ["" "Year"]
                                              (map #(vector % %)
-                                                  (range year-start (inc year-end))))}]})]))
+                                                  (range year-start (inc year-end))))}]}
+                   renderer)]))
 
-(defmethod render-field :year-select [field]
+(defmethod render-year-select :default [field renderer]
   (let [this-year (fu/get-this-year)
         start (:start field this-year)
         end (:end field (+ this-year 20))]
@@ -344,9 +544,10 @@
      (render-field (assoc field
                           :class (str (:class field) " input-small")
                           :type :select
-                          :options (range start (inc end))))]))
+                          :options (range start (inc end)))
+                   renderer)]))
 
-(defmethod render-field :month-select [field]
+(defmethod render-month-select :default [field renderer]
   (let [opts (if (:numbers field)
                (range 1 13)
                (map vector
@@ -356,103 +557,17 @@
      (render-field (assoc field
                           :class (str (:class field) " input-medium")
                           :type :select
-                          :options opts))]))
+                          :options opts)
+                   renderer)]))
 
-(defn round [x step]
-  (int (* (Math/floor (/ x (double step)) ) step)))
-
-(defmethod render-field :time [field]
+(defmethod render-time :default [field renderer]
   (let [time (fu/normalize-time (:value field))]
-    (render-default-input
-      (assoc field :value
-             (when time
-               (fu/format-time time))))))
+    (render-default-field (assoc field :value
+                           (when time
+                             (fu/format-time time)))
+                         renderer)))
 
-(defn get-hour+ampm [h ampm?]
-  (when h
-    (if ampm?
-      (cond
-        (zero? h) [12 "am"]
-        (= 12 h) [12 "pm"]
-        (< 12 h) [(- h 12) "pm"]
-        :else [h "am"])
-      [h])))
-
-(defn format-minutes [m]
-  (#+clj format #+cljs gstring/format "%02d" m))
-
-(defn- render-time-select-multi [fname h m s step ampm? seconds?]
-  (let [[h ampm] (get-hour+ampm h ampm?)]
-    (list
-      (render-field {:type :select
-                     :name (str fname "[h]")
-                     :class "input-small"
-                     :value h
-                     :first-option ["" "--"]
-                     :options (if ampm? (range 1 13) (range 0 24))})
-      " "
-      (render-field {:type :select
-                     :name (str fname "[m]")
-                     :class "input-small"
-                     :value m
-                     :first-option ["" "--"]
-                     :options (map (juxt identity format-minutes)
-                                   (range 0 60 step))})
-      (when seconds?
-        (list
-          " "
-          (render-field {:type :select
-                         :name (str fname "[s]")
-                         :class "input-small"
-                         :value s
-                         :first-option ["" "--"]
-                         :options (map (juxt identity format-minutes)
-                                       (range 0 60 step))})))
-      (when ampm?
-        (list
-          " "
-          (render-field {:type :select
-                         :name (str fname "[ampm]")
-                         :class "input-small"
-                         :value ampm
-                         :first-option ["" "--"]
-                         :options ["am" "pm"]}))))))
-
-(defn- add-minutes [h m mx]
-  (let [m* (+ m mx)]
-    (if (< 59 m*)
-      [(inc h) (- m* 60)] ;assumes never adding more than 60
-      [h m*])))
-
-(defn time-range [start [eh em] step]
-  (take-while (fn [[h m]]
-                (or (< h eh)
-                    (and (= h eh) (<= m em))))
-    (iterate (fn [[h m]] (add-minutes h m step))
-             start)))
-
-(defn format-time [h m ampm?]
-  (let [[h ampm] (get-hour+ampm h ampm?)]
-    (str h ":"
-         (format-minutes m)
-         (when ampm? (str " " ampm)))))
-
-(defn- render-time-select-single [field h m step ampm? start end]
-  (let [start (or (fu/normalize-time start)
-                  (fu/normalize-time {:h 0 :m 0}))
-        end (or (fu/normalize-time end)
-                (fu/normalize-time {:h 23 :m 59}))
-        opts (for [[h m] (time-range (fu/get-hours-minutes-seconds start)
-                                     (fu/get-hours-minutes-seconds end)
-                                     step)]
-               [(str h ":" (format-minutes m))
-                (format-time h m ampm?)])]
-    (render-field (assoc field
-                         :type :select
-                         :value (str h ":" (format-minutes m))
-                         :options opts))))
-
-(defmethod render-field :time-select [field]
+(defmethod render-time-select :default [field renderer]
   (let [step (:step field 5)
         ampm? (:ampm field true)
         time (fu/normalize-time (:value field))
@@ -463,27 +578,105 @@
         seconds? (:seconds field false)]
     [:span.time-select
      (if (:compact field)
-       (render-time-select-single field h m step ampm? (:start field) (:end field))
-       (render-time-select-multi (:name field) h m s step ampm? seconds?))]))
+       (render-time-select-single field h m step ampm? (:start field) (:end field) renderer)
+       (render-time-select-multi (:name field) h m s step ampm? seconds? renderer))]))
 
-(defmethod render-field :datetime-select [field]
+(defmethod render-datetime-select :default [field renderer]
   [:span.datetime-select
-   (render-field (assoc field :type :date-select))
+   (render-field (assoc field :type :date-select)
+                 renderer)
    " "
-   (render-field (assoc field :type :time-select :compact false))])
+   (render-field (assoc field :type :time-select :compact false)
+                 renderer)])
 
-(defmethod render-field :currency [field]
-  (render-default-input
-    (assoc field :type :text)
-    {:prefix "$"}))
+(defmethod render-currency :default [field renderer]
+  (render-default-field (assoc field :type :text)
+                       renderer
+                       {:prefix "$"}))
 
-(defmethod render-field :us-tel [field]
-  (render-default-input
-    (assoc field :type :tel :value (fu/format-us-tel (:value field)))))
+(defmethod render-us-tel :default [field renderer]
+  (render-default-field (assoc field
+                          :type :tel
+                          :value (fu/format-us-tel (:value field)))
+                        renderer))
 
-(defmulti fields-error-class
-  (fn [renderer]
-    renderer))
 
-(defmethod fields-error-class :default [_]
-  "problem error")
+;/=====================================\
+;|                                     |
+;|   defmethod for each kind of field  |
+;|       (dispatch on field type)      |
+;|                                     |
+;\=====================================/
+
+
+(defmethod render-field :default [field & [renderer opts]]
+  (render-default-field field renderer opts))
+
+(defmethod render-field :textarea [field & [renderer]]
+  (render-textarea field renderer))
+
+(defmethod render-field :select [field & [renderer]]
+  (render-select field renderer))
+
+(defmethod render-field :checkbox [field & [renderer]]
+  (render-checkbox field renderer))
+
+(defmethod render-field :checkboxes [field & [renderer]]
+  (render-checkboxes field renderer))
+
+(defmethod render-field :radio [field & [renderer]]
+  (render-radio field renderer))
+
+(defmethod render-field :radios [field & [renderer]]
+  (render-radios field renderer))
+
+(defmethod render-field :html [field & [renderer]]
+  (render-html field renderer))
+
+(defmethod render-field :labeled-html [field & [renderer]]
+  (render-labeled-html field renderer))
+
+(defmethod render-field :heading [field & [renderer]]
+  (render-heading field renderer))
+
+(defmethod render-field :us-state [field & [renderer]]
+  (render-us-state field renderer))
+
+(defmethod render-field :ca-state [field & [renderer]]
+  (render-ca-state field renderer))
+
+(defmethod render-field :country [field & [renderer]]
+  (render-country field renderer))
+
+(defmethod render-field :date [field & [renderer]]
+  (render-date field renderer))
+
+(defmethod render-field :date-text [field & [renderer]]
+  (render-date-text field renderer))
+
+(defmethod render-field :compound [field & [renderer]]
+  (render-compound field renderer))
+
+(defmethod render-field :date-select [field & [renderer]]
+  (render-date-select field renderer))
+
+(defmethod render-field :year-select [field & [renderer]]
+  (render-year-select field renderer))
+
+(defmethod render-field :month-select [field & [renderer]]
+  (render-month-select field renderer))
+
+(defmethod render-field :time [field & [renderer]]
+  (render-time field renderer))
+
+(defmethod render-field :time-select [field & [renderer]]
+  (render-time-select field renderer))
+
+(defmethod render-field :datetime-select [field & [renderer]]
+  (render-datetime-select field renderer))
+
+(defmethod render-field :currency [field & [renderer]]
+  (render-currency field renderer))
+
+(defmethod render-field :us-tel [field & [renderer]]
+  (render-us-tel field renderer))
