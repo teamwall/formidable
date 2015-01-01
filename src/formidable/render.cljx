@@ -42,9 +42,13 @@
       ucfirst
       string/trim)))
 
-(defn render-problems
+(defmulti render-problems
   "Renders a form problems as Hiccup data. Lists the each set of keys with
   their corresponding message."
+  (fn [problems & [fields renderer]]
+    renderer))
+
+(defn default-render-problems
   [problems & [fields]]
   (let [problems (if (map? problems) [problems] problems)
         fields-by-name (if (map? fields)
@@ -65,8 +69,11 @@
              (list [:strong (string/join ", " field-labels)] ": "))
            msg]))]]))
 
+(defmethod render-problems :default [problems & [fields]]
+  (default-render-problems problems fields))
+
 (defmulti render-field
-  "Render a field as Hiccup data. Dispatches on :type"
+  "Render a field as Hiccup data. Dispatches on :type and :renderer"
   (fn [field & [renderer]]
     (if (nil? renderer)
       (:type field)

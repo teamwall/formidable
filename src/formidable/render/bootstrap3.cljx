@@ -1,6 +1,7 @@
 (ns formidable.render.bootstrap3
   (:require [formidable.data :as data]
             [formidable.render :refer [render-form render-field
+                                       render-problems
                                        get-hour+ampm format-minutes
                                        format-time time-range round
                                        build-opt-tag get-input-attrs
@@ -280,9 +281,7 @@
                (conj group (first fields))
                (rest fields))))))
 
-(defn render-problems
-  "Renders a form problems as Hiccup data. Lists the each set of keys with
-  their corresponding message."
+(defmethod render-problems :bootstrap3-stacked
   [problems & [fields]]
   (let [problems (if (map? problems) [problems] problems)
         fields-by-name (if (map? fields)

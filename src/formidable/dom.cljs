@@ -83,7 +83,8 @@
   (let [form-el (get-form-el container-or-form-el)]
     (clear-problems form-el)
     (let [problems-el (crate/html (fr/render-problems problems
-                                                      (:fields form-spec)))]
+                                                      (:fields form-spec)
+                                                      (:renderer form-spec)))]
       (d/insert-before! problems-el form-el)
       (scroll-to-el problems-el))
     (doseq [problem problems
