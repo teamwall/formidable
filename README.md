@@ -13,7 +13,7 @@ See a __live demo__ at [formidable-demo.herokuapp.com](http://formidable-demo.he
 Leiningen coordinate:
 
 ```clj
-[formidable "0.1.8"]
+[formidable "0.1.9"]
 ```
 
 ## Usage
@@ -265,16 +265,20 @@ The following special keys are also supported:
       :renderer       - Determines the type of renderer to use. Built-in options:
                           :bootstrap-horizontal (the default)
                           :bootstrap-stacked
+                          :bootstrap3-stacked
                           :table
                           :inline
       :fields         - Sequence of form field specifications. See below.
       :values         - Map of values used to populate the form fields, or a
-                        form-data-encoded string
+                        form-data-encoded string.
       :submit-label   - Label to use on the submit button. Defaults to "Submit"
       :cancel-label   - Label to use on the cancel button. Defaults to "Cancel"
+      :cancel-options - Options map provided to the cancel DOM node (see Hiccup).
+                        If this options is provided, `:cancel-href` MUST NOT be used.
       :cancel-href    - When provided, shows a "Cancel" link or button next to the
-                        submit button
-      :validations    - A sequence of validation specifications
+                        submit button.
+                        If this options is provided, `:cancel-options` MUST NOT be used.
+      :validations    - A sequence of validation specifications.
       :validator      - A function to call to validate parsed values for this
                         form. The function should take a map of values and return
                         a sequence of problem maps for each field that failed to

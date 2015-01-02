@@ -17,8 +17,10 @@
                     [:label {:for field-id} " " [:span.cb-label (:label field)]])
                   (when (:suffix field)
                     [:span.suffix (:suffix field)])
-                  (when (and (= :submit (:type field)) (:cancel-href field))
+                  (when (and (= :submit (:type field)) (:cancel-href field) (not (:cancel-options field)))
                     [:span.cancel-link " " [:a {:href (:cancel-href field)} (:cancel-label field)]])
+                  (when (and (= :submit (:type field)) (:cancel-options field) (not (:cancel-href field)))
+                    [:span.cancel-link " " [:a (:cancel-options field) (:cancel-label field)]])
                   (when (:note field)
                     [:div.note (:note field)])]
         label-el (when (and (not (#{:checkbox} (:type field))) (:label field))

@@ -221,10 +221,10 @@
                                       [fields values])
         fields (prep-fields fields values spec)
         ;; Attach :cancel-href to submit button
-        fields (if (or (:cancel-label spec) (:cancel-href spec))
+        fields (if (or (:cancel-label spec) (:cancel-href spec) (:cancel-options spec))
                  (for [field fields]
                    (if (= :submit (:type field))
-                     (merge field (select-keys spec [:cancel-label :cancel-href]))
+                     (merge field (select-keys spec [:cancel-label :cancel-href :cancel-options]))
                      field))
                  fields)
         ;; Add submit if not already present
@@ -236,6 +236,7 @@
                            :name "submit"
                            :cancel-label (:cancel-label spec "Cancel")
                            :cancel-href (:cancel-href spec)
+                           :cancel-options (:cancel-options spec)
                            :value (:submit-label spec "Submit")}]))
         ;; Problems
         problems (prep-problems (:problems spec))
@@ -262,78 +263,79 @@
 
   The following special keys are also supported:
 
-      :renderer     - Determines renderer to use. Built-in options:
-                        :bootstrap-horizontal (the default)
-                        :bootstrap-stacked
-                        :bootstrap3-stacked
-                        :table
-                        :inline
-                      Custom renderers can be created by implementing the
-                      formidable.render/render-form multimethod.
-      :fields       - Sequence of form field specifications. See below.
-      :values       - Map of values used to populate the form fields, or a
-                      form-data-encoded string
-      :submit-label - Label to use on the submit button. Defaults to \"Submit\"
-      :cancel-label - Label to use on the cancel button. Defaults to \"Cancel\"
-      :cancel-href  - When provided, shows a \"Cancel\" hyperlink next to the
-                      submit button
-      :validations  - A sequence of validation specifications
-      :validator    - A function to call to validate parsed values for this
-                      form. The function should take a map of values and return
-                      a sequence of problem maps for each field that failed to
-                      validate. The problem map should contain the keys :keys
-                      and :msg.
+      :renderer       - Determines renderer to use. Built-in options:
+                          :bootstrap-horizontal (the default)
+                          :bootstrap-stacked
+                          :bootstrap3-stacked
+                          :table
+                          :inline
+                        Custom renderers can be created by implementing the
+                        formidable.render/render-form multimethod.
+      :fields         - Sequence of form field specifications. See below.
+      :values         - Map of values used to populate the form fields, or a
+                        form-data-encoded string
+      :submit-label   - Label to use on the submit button. Defaults to \"Submit\"
+      :cancel-label   - Label to use on the cancel button. Defaults to \"Cancel\"
+      :cancel-options - Label to use on the cancel button. Defaults to \"Cancel\"
+      :cancel-href    - When provided, shows a \"Cancel\" hyperlink next to the
+                        submit button
+      :validations    - A sequence of validation specifications
+      :validator      - A function to call to validate parsed values for this
+                        form. The function should take a map of values and return
+                        a sequence of problem maps for each field that failed to
+                        validate. The problem map should contain the keys :keys
+                        and :msg.
       :validate-types - Whether to validate datatypes; true by default.
-      :blank-nil    - When values are parsed, replace blank strings with nil
-      :problems     - Sequence of field names or problem maps. Form
-                      renderers typically add a class and style to highlight
-                      problem fields and, if problem maps are provided,
-                      show descriptive messages.
-      :timezone     - String of timezone with which to localize the display of
-                      :datetime-select fields. The default is UTC. JVM only.
+      :blank-nil      - When values are parsed, replace blank strings with nil
+      :problems       - Sequence of field names or problem maps. Form
+                        renderers typically add a class and style to highlight
+                        problem fields and, if problem maps are provided,
+                        show descriptive messages.
+      :timezone       - String of timezone with which to localize the display of
+                        :datetime-select fields. The default is UTC. JVM only.
 
   A field specification is a map with the following keys:
 
-      :name         - Required name of the field, a keyword or string. Use
-                      dotted keywords like :foo.bar to represent fields that
-                      will parse as nested map values.
-      :label        - Optional display name. Auto-generated from :name if not
-                      provided
-      :type         - Type of the field. Defaults to :text. See below for
-                      built-in types. If an unrecognized type is provided,
-                      an <input> element with that type will be assumed.
-                      Certain types imply particular parsing or validation
-                      rules - e.g., an :email field must be a valid email.
-      :datatype     - Optional. Datatype of the field used for parsing. Can be
-                      one of:
+      :name           - Required name of the field, a keyword or string. Use
+                        dotted keywords like :foo.bar to represent fields that
+                        will parse as nested map values.
+      :label          - Optional display name. Auto-generated from :name if not
+                        provided
+      :type           - Type of the field. Defaults to :text. See below for
+                        built-in types. If an unrecognized type is provided,
+                        an <input> element with that type will be assumed.
+                        Certain types imply particular parsing or validation
+                        rules - e.g., an :email field must be a valid email.
+      :datatype       - Optional. Datatype of the field used for parsing. Can be
+                        one of:
 
-                      :str, :int, :long, :boolean, :float, :double, :decimal,
-                      :bigint, :date, :time, :instant, :file.
+                        :str, :int, :long, :boolean, :float, :double, :decimal,
+                        :bigint, :date, :time, :instant, :file.
 
-                      Defaults to :str.
+                        Defaults to :str.
 
-                      All types can be appended with an \"s\" when a sequence
-                      is expected - e.g., :ints for a sequence of integers. This
-                      is useful for fields that have composite values, such as
-                      :checkboxes.
+                        All types can be appended with an \"s\" when a sequence
+                        is expected - e.g., :ints for a sequence of integers. This
+                        is useful for fields that have composite values, such as
+                        :checkboxes.
 
-                      :date field values are expected to be in yyyy-MM-dd
-                      format by default. Set :date-format to change that. :time
-                      fields may be in H:m or H:m:s format. :instant fields
-                      are in EDN instant (RFC-3339) format.
+                        :date field values are expected to be in yyyy-MM-dd
+                        format by default. Set :date-format to change that. :time
+                        fields may be in H:m or H:m:s format. :instant fields
+                        are in EDN instant (RFC-3339) format.
 
-                      All date/time fields are parsed into java.util.Date
-                      or java.sql.Time (or Date for ClojureScript) objects
-                      created using the UTC timezone.
+                        All date/time fields are parsed into java.util.Date
+                        or java.sql.Time (or Date for ClojureScript) objects
+                        created using the UTC timezone.
       :datatype-error - Optional custom error message to use if datatype
-                      validation fails.
-      :blank-nil    - When the value is parsed, replace a blank string with nil
-      :flatten      - If a value parses to a map (e.g. for :compound fields),
-                      adds each key of the map to the top level values map,
-                      prefixed with the field name and a dash.
-      :note         - A bit of explanatory content to accompany the field
-      :prefix       - Content to insert before a field
-      :suffix       - Content to insert after a field
+                        validation fails.
+      :blank-nil      - When the value is parsed, replace a blank string with nil
+      :flatten        - If a value parses to a map (e.g. for :compound fields),
+                        adds each key of the map to the top level values map,
+                        prefixed with the field name and a dash.
+      :note           - A bit of explanatory content to accompany the field
+      :prefix         - Content to insert before a field
+      :suffix         - Content to insert after a field
 
   Built-in field types:
 

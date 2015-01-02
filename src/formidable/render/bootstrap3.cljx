@@ -82,9 +82,16 @@
                    (when (:prefix field)
                      [:span.prefix (:prefix field)])
                    (when (and (= :submit (:type field))
-                              (:cancel-href field))
+                              (:cancel-href field)
+                              (not (:cancel-options field)))
                      [:span.cancel-link.visible-xs-inline-block.visible-sm-inline-block.visible-md-inline-block.visible-lg-inline-block
-                      " " [:a.btn {:href (:cancel-href field)}
+                      " " [:a.btn.cancel-form {:href (:cancel-href field)}
+                           (:cancel-label field)]])
+                   (when (and (= :submit (:type field))
+                              (:cancel-options field)
+                              (not (:cancel-href field)))
+                     [:span.cancel-link.visible-xs-inline-block.visible-sm-inline-block.visible-md-inline-block.visible-lg-inline-block
+                      " " [:a.btn.cancel-form (:cancel-options field)
                            (:cancel-label field)]])
                    (cond
                     checkbox? [:label {:for field-id} " "
