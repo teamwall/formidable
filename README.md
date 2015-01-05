@@ -62,7 +62,7 @@ Render a form using `formidable.core/render-form`:
 
 Using the default `:bootstrap-horizontal` renderer and a [Bootstrap](http://twitter.github.com/bootstrap/) theme, the form will look something like this when passed through [Hiccup](https://github.com/weavejester/hiccup) or [Dommy](https://github.com/Prismatic/dommy):
 
-![form](https://github.com/jkk/formidable/raw/master/doc/bootstrap-horizontal.png)
+![form](https://github.com/teamwall/formidable/raw/master/doc/bootstrap-horizontal.png)
 
 Note: Formidable does not include any CSS or images. You are responsible for providing those yourself.
 
