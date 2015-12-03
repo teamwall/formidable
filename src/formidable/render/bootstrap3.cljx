@@ -66,7 +66,7 @@
                     (= :time-select (:type field)))
         field (assoc field
                 :id field-id
-                :class (if checkbox? "" "form-control"))
+                :class (str (:class field) (if checkbox? "" " form-control")))
         submit? (= :submit (:type field))
         field (if submit?
                 (assoc field :class (str (:class field)
